@@ -380,7 +380,7 @@ actual_l2 = decimal.Decimal(int(s2_data[192:256], 16))
 
 脚本使用的示例池子是 0.05% 费率，因此先将参与价格推进的有效输入量改为：
 
-$$\mathrm{rem\_amt0} = \mathrm{amount0} \times (1 - 0.0005)$$
+$$rem\_amt0 = amount0 \times (1 - 0.0005)$$
 
 代码：
 
@@ -463,7 +463,7 @@ dx_to_edge = (curr_l * abs(curr_sp - sp_edge) * Q96) / (curr_sp * sp_edge)
 若：
 
 $$
-|\mathrm{rem\_amt0}| \ge \Delta x
+|rem\_amt0| \ge \Delta x
 $$
 
 说明本段交易量足够把价格推到边界，甚至继续往前走。
