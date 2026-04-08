@@ -1,20 +1,20 @@
 import pandas as pd
 import decimal
-import os
 from io import StringIO
 from web3 import Web3
-from dotenv import load_dotenv
+from config_utils import load_config
 
 
 # 1. 基础高精度配置
 decimal.getcontext().prec = 100
 Q96 = decimal.Decimal(2**96)
+LOG_COLUMNS = ["Hash","BlockNumber","Address","TopicHash","Topics","Data","CreatedAt","Serial","BlockHash"]
 
 # --- RPC 连接 ---
-load_dotenv()
-RPC_URL = os.getenv("RPC_URL")
+CONFIG = load_config()
+RPC_URL = CONFIG.get("rpc_url")
 if not RPC_URL:
-    raise RuntimeError("缺少 RPC_URL。请在本地 .env 或环境变量中配置以太坊 RPC 地址。")
+    raise RuntimeError("缺少 config.yaml 中的 rpc_url，请先配置以太坊 RPC 地址。")
 
 # print(f"[*] 使用 RPC URL: {RPC_URL}")
 POOL_ADDRESS = "0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640" #示例池
@@ -44,6 +44,22 @@ pool_contract = w3.eth.contract(address=w3.to_checksum_address(POOL_ADDRESS), ab
 TOPIC_SWAP  = "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67"
 TOPIC_MINT  = "0x7a53080ba414158be7ec69b987b5fb7d07dee101fe85488f0853ae16239d0bde"
 TOPIC_BURN  = "0x0c396cd989a39f4459b5fa1aed6a9a8dcdbc45908acfd67e028cd568da98982c"
+
+
+def load_logs_dataframe(source, from_text=False):
+    reader = StringIO(source) if from_text else source
+    df = pd.read_csv(reader, quotechar='"')
+
+    if list(df.columns) != LOG_COLUMNS:
+        reader = StringIO(source) if from_text else source
+        df = pd.read_csv(reader, names=LOG_COLUMNS, quotechar='"')
+
+    df["BlockNumber"] = pd.to_numeric(df["BlockNumber"], errors="coerce")
+    df["Serial"] = pd.to_numeric(df["Serial"], errors="coerce")
+    df = df.dropna(subset=["BlockNumber", "Serial"])
+    df["BlockNumber"] = df["BlockNumber"].astype(int)
+    df["Serial"] = df["Serial"].astype(int)
+    return df.sort_values(by=["BlockNumber", "Serial"]).reset_index(drop=True)
 
 def decode_int256(hex_str):
     if not hex_str or pd.isna(hex_str): return 0
@@ -80,9 +96,7 @@ def fetch_tick_changes_from_rpc(start_tick, end_tick, block_number, tick_spacing
     return net_changes
 
 def run_automated_test(csv_text):
-    columns = ["Hash","BlockNumber","Address","TopicHash","Topics","Data","CreatedAt","Serial","BlockHash"]
-    df = pd.read_csv(StringIO(csv_text), names=columns, quotechar='"')
-    df = df.sort_values(by=['BlockNumber', 'Serial']).reset_index(drop=True)
+    df = load_logs_dataframe(csv_text, from_text=True)
 
     # --- Step 1: 初始状态 ---
     s1_row = df.iloc[0]
@@ -184,16 +198,14 @@ def run_automated_test(csv_text):
 
 
 def get_data_from_csv(file_path, start_n=1, end_n=2):
-    columns = ["Hash","BlockNumber","Address","TopicHash","Topics","Data","CreatedAt","Serial","BlockHash"]
-    full_df = pd.read_csv(file_path, names=columns, quotechar='"')
-    full_df = full_df.sort_values(by=['BlockNumber', 'Serial']).reset_index(drop=True)
+    full_df = load_logs_dataframe(file_path)
     swap_indices = full_df[full_df['TopicHash'].str.lower() == TOPIC_SWAP.lower()].index.tolist()
     if len(swap_indices) < end_n: return None
     return full_df.loc[swap_indices[start_n - 1] : swap_indices[end_n - 1]]
 
 def main():
-    csv_file = "./work_testdata.csv"
-    target_df = get_data_from_csv(csv_file, start_n=5, end_n=6) # 选择第 i 到 i+1 次 Swap 事件进行测试   
+    csv_file = "./data_test.csv"
+    target_df = get_data_from_csv(csv_file, start_n=4, end_n=5) # 选择第 i 到 i+1 次 Swap 事件进行测试   
     if target_df is not None:
         run_automated_test(target_df.to_csv(index=False, header=False))
 

@@ -12,7 +12,7 @@
 
 ---
 
-# Uniswap V3 交易价格计算算法原理
+# Uniswap V3 交易价格算法原理
 
 ## 1. Uniswap V3 的价格计算
 
