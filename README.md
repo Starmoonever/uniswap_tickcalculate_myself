@@ -463,7 +463,7 @@ dx_to_edge = (curr_l * abs(curr_sp - sp_edge) * Q96) / (curr_sp * sp_edge)
 若：
 
 $$
-|\mathrm{rem{\_{amt0}}| \ge \Delta x
+|\mathrm{rem_{amt0}}| \ge \Delta x
 $$
 
 说明本段交易量足够把价格推到边界，甚至继续往前走。
