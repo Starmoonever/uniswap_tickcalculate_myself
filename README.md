@@ -542,11 +542,7 @@ if abs(rem_amt0) > 0:
 对应公式为：
 
 $$
-\sqrt{P}_{next}
-==
-
-\frac{L \cdot \sqrt{P} \cdot 2^{96}}
-{L \cdot 2^{96} + \Delta x \cdot \sqrt{P}}
+\sqrt{P}_{next}=\frac{L \cdot \sqrt{P} \cdot 2^{96}}{L \cdot 2^{96} + \Delta x \cdot \sqrt{P}}
 $$
 
 这里的含义是：
