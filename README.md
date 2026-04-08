@@ -380,7 +380,7 @@ actual_l2 = decimal.Decimal(int(s2_data[192:256], 16))
 
 脚本使用的示例池子是 0.05% 费率，因此先将参与价格推进的有效输入量改为：
 
-$$\text{rem\_amt0} = \text{amount0} \times (1 - 0.0005)$$
+$$\text{rem_amt0} = \text{amount0} \times (1 - 0.0005)$$
 
 代码：
 
