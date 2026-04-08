@@ -2,12 +2,23 @@ import pandas as pd
 import decimal
 import os
 from io import StringIO
+from web3 import Web3
+from dotenv import load_dotenv
+
 
 # 1. 基础高精度配置
 decimal.getcontext().prec = 100
 Q96 = decimal.Decimal(2**96)
 
-POOL_ADDRESS = "0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640"
+# --- RPC 连接 ---
+load_dotenv()
+RPC_URL = os.getenv("RPC_URL")
+if not RPC_URL:
+    raise RuntimeError("缺少 RPC_URL。请在本地 .env 或环境变量中配置以太坊 RPC 地址。")
+
+# print(f"[*] 使用 RPC URL: {RPC_URL}")
+POOL_ADDRESS = "0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640" #示例池
+w3 = Web3(Web3.HTTPProvider(RPC_URL))
 
 # ABI
 POOL_ABI = [
@@ -27,44 +38,7 @@ POOL_ABI = [
         "stateMutability": "view", "type": "function"
     }
 ]
-
-
-def load_local_env(env_path=".env"):
-    env_vars = {}
-    if not os.path.exists(env_path):
-        return env_vars
-
-    with open(env_path, "r", encoding="utf-8") as f:
-        for raw_line in f:
-            line = raw_line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            env_vars[key.strip()] = value.strip().strip("'\"")
-    return env_vars
-
-
-def get_rpc_url():
-    rpc_url = os.getenv("RPC_URL")
-    if rpc_url:
-        return rpc_url
-
-    local_env = load_local_env()
-    return local_env.get("RPC_URL")
-
-
-def build_pool_contract():
-    rpc_url = get_rpc_url()
-    if not rpc_url:
-        return None
-
-    from web3 import Web3
-
-    w3 = Web3(Web3.HTTPProvider(rpc_url))
-    return w3.eth.contract(
-        address=w3.to_checksum_address(POOL_ADDRESS),
-        abi=POOL_ABI,
-    )
+pool_contract = w3.eth.contract(address=w3.to_checksum_address(POOL_ADDRESS), abi=POOL_ABI)
 
 # 事件哈希签名
 TOPIC_SWAP  = "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67"
@@ -86,11 +60,6 @@ def to_human_price(sp):
     return (1 / ((sp / Q96)**2)) * (10**12)
 
 def fetch_tick_changes_from_rpc(start_tick, end_tick, block_number, tick_spacing=10):
-    pool_contract = build_pool_contract()
-    if pool_contract is None:
-        print("[!] 未检测到 RPC_URL，跳过链上 Tick 扫描，仅使用 CSV 中的 Mint/Burn 数据继续计算。")
-        return {}
-
     net_changes = {}
     low, high = min(start_tick, end_tick), max(start_tick, end_tick)
     # 向外扩展 1 个 spacing 确保安全
@@ -222,10 +191,9 @@ def get_data_from_csv(file_path, start_n=1, end_n=2):
     if len(swap_indices) < end_n: return None
     return full_df.loc[swap_indices[start_n - 1] : swap_indices[end_n - 1]]
 
-# 执行
 def main():
     csv_file = "./work_testdata.csv"
-    target_df = get_data_from_csv(csv_file, start_n=2, end_n=3)
+    target_df = get_data_from_csv(csv_file, start_n=5, end_n=6) # 选择第 i 到 i+1 次 Swap 事件进行测试   
     if target_df is not None:
         run_automated_test(target_df.to_csv(index=False, header=False))
 
